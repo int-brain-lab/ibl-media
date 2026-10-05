@@ -49,12 +49,14 @@ The following checks succeeded on 5 October 2026 for `cyrille.rossant@internatio
 
 Media now passes the permission checks with the saved credentials. See [setup](setup.md#enable-public-viewing-on-media) for the sharing configuration. These checks did not upload media or create catalog entries.
 
-When media uploads are authorized, verify the remaining publication path:
+After the first upload was authorized, these checks also passed:
 
-1. Upload one small asset and verify its metadata commit.
-2. Check signed-out viewing/downloading of the Drive file.
-3. Upload another version and confirm earlier files remain accessible.
+1. Upload `ibl_bwm.png` (445,800 bytes) as [asset `22f5f7a71844403aaa379e555b3a0f02`](../assets/22f5f7a71844403aaa379e555b3a0f02.yaml), version 1.
+2. Validate the GitHub metadata, including uploader, credits, reuse terms, source checksum, and media checksum. GitHub CI passed for the catalog commit.
+3. Download the file without Google credentials or browser cookies: HTTP 200, `image/png`, and bytes identical to the original. SHA-256: `0efb79691cc0cce5abe989f0b1525579f9766514b867ac9796326336d2072141`.
 
-The actual desktop Picker callback and persisted credentials have been verified. File transfer, metadata commits, and inherited public access on new files remain untested against the live services. Branch write checks inspect repository access and report protection; they do not prove an authenticated write will pass every repository rule. Automated upload tests use simulated services.
+The actual desktop Picker callback, persisted credentials, file transfer, metadata commit, and inherited public download access have now been verified. The notebook was associated as provenance, not uploaded. Its checkout had untracked documentation, so metadata correctly records `working_tree_dirty: true`; both the PNG and notebook matched their committed bytes.
+
+A second-version upload and recovery from a live interruption remain untested against the live services. Automated tests cover versioning and recovery with simulated services. No second version was uploaded as part of this pilot.
 
 A generated gallery, S3 delivery, automated backups, legacy import, and cross-machine recovery are outside this initial implementation.

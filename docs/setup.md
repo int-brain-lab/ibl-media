@@ -22,7 +22,7 @@ Verified on 5 October 2026 during the one-member pilot:
 | Public viewing | Enabled; API permission inspection confirms public viewing |
 | Pilot GitHub account | `rossant`; repository Write access confirmed |
 
-Media was created for this collection and is the intended publication folder. No additional destination folder is needed. No media upload or catalog publication has been performed yet.
+Media was created for this collection and is the intended publication folder. No additional destination folder is needed. The first asset, [Brain Wide Map overview (legacy)](../assets/22f5f7a71844403aaa379e555b3a0f02.yaml), was published on 5 October 2026. Its metadata passed schema validation and CI; an anonymous download returned the original PNG with a matching SHA-256 checksum.
 
 ## Contributor setup
 
@@ -60,7 +60,7 @@ This step is complete for Media, and `doctor` confirms public viewing. To config
 
 If the option is unavailable, check the Shared Drive and Workspace sharing settings with an administrator. Contributors need permission to add files; the Shared Drive Contributor role (`writer` in the API) permits this. Shared Drive files belong to the organization. See Google's [Shared Drive roles](https://developers.google.com/workspace/drive/api/guides/about-shareddrives).
 
-Files uploaded into Media inherit its sharing. The tool inspects permissions and never changes them automatically. Permission inspection is a readiness check; the first real asset still needs a signed-out viewing and download check. See [sharing and inheritance](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
+Files uploaded into Media inherit its sharing. The tool inspects permissions and never changes them automatically. Permission inspection is a readiness check; the first asset's download was also verified without authentication. Repeat that check if the sharing configuration changes. See [sharing and inheritance](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
 
 ## Maintainer: Google application
 

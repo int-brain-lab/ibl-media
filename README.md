@@ -4,7 +4,7 @@ Videos, figures, illustrations, animations, and other media from the Internation
 
 The files live in the IBL [Media folder on Google Drive](https://drive.google.com/drive/folders/1aWO70W8pRQDO6Ow-XFXNOSchAIm6ZolL). This repository holds their metadata and the tool for uploading them. Members publish directly with one command or from Python; no form, pull request, or review is required.
 
-> Pilot status, 5 October 2026: Google login, saved credentials, Drive upload access, public viewing, and GitHub write access have been checked for Cyrille. No media has been uploaded; the first real upload and public download remain to be tested. See [setup](docs/setup.md).
+> Pilot status, 5 October 2026: the first asset is published. Google login, saved credentials, Drive permissions, metadata publication, and an anonymous download with a matching checksum have been verified for Cyrille. Browse the [Brain Wide Map overview](https://drive.google.com/file/d/1Vwr6Qdc8fFLPWI24uwd7_Hjdp3k3K_i4/view) and its [metadata](assets/22f5f7a71844403aaa379e555b3a0f02.yaml). See [setup](docs/setup.md).
 
 ## Set up once
 
@@ -47,7 +47,7 @@ To check saved access without uploading:
 ibl-media doctor
 ```
 
-`doctor` exits with an error if upload access or public viewing is missing. Media currently passes both checks for the pilot account. During the pilot, use these checks and dry runs; the commands below are for when media publication begins.
+`doctor` exits with an error if upload access or public viewing is missing. Media currently passes both checks for the pilot account. Use a dry run to inspect a file's metadata before publishing it.
 
 ## Upload an asset
 
