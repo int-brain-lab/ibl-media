@@ -1,0 +1,38 @@
+schema_version: 1
+id: 22f5f7a71844403aaa379e555b3a0f02
+title: Brain Wide Map overview (legacy)
+credit: 'Dan Birman, with Mayo Faulkner, Cyrille Rossant, Gaelle Chapuis, Olivier
+  Winter, and IBL staff. Visualization tools: Virtual Brain Lab (Kai Nylund, Kenneth
+  Yang, Jasmine Schoch).'
+reuse: Permission required
+versions:
+- version: 1
+  upload_id: 73cfd3a5d3294f7591a40721a198f077
+  uploaded_at: '2026-10-05T12:14:38.422742+00:00'
+  uploaded_by:
+    github: rossant
+  credit: 'Dan Birman, with Mayo Faulkner, Cyrille Rossant, Gaelle Chapuis, Olivier
+    Winter, and IBL staff. Visualization tools: Virtual Brain Lab (Kai Nylund, Kenneth
+    Yang, Jasmine Schoch).'
+  reuse: Permission required
+  description: 'Legacy Brain Wide Map overview image from ibl-viz; not a representation
+    of the latest dataset. Original PNG: https://github.com/int-brain-lab/ibl-viz/blob/a12faa7817481a031d9f19ace2bcd6f0d992ab5d/bwm/all_clusters_spinning/ibl_bwm.png
+    . Associated notebook: https://github.com/int-brain-lab/ibl-viz/blob/aa6c9963bcd7453cef1c17bcc8a2f9c21bdf2e69/bwm/all_clusters_spinning/all_spinning.ipynb
+    . Attribution follows the legacy repository README.'
+  source:
+    path: bwm/all_clusters_spinning/all_spinning.ipynb
+    sha256: 8cc1279aa656f91a4341415547eb4875bf21ab8a84d1a492997756a581c7e593
+    commit: 5706a32b268853384f2bfe9ee727c7da8c7972c7
+    working_tree_dirty: true
+    repository: https://github.com/int-brain-lab/ibl-viz
+  files:
+  - filename: ibl_bwm.png
+    mime_type: image/png
+    size_bytes: 445800
+    sha256: 0efb79691cc0cce5abe989f0b1525579f9766514b867ac9796326336d2072141
+    width_px: 1024
+    height_px: 768
+    storage:
+      provider: google-drive
+      file_id: 1Vwr6Qdc8fFLPWI24uwd7_Hjdp3k3K_i4
+      url: https://drive.google.com/file/d/1Vwr6Qdc8fFLPWI24uwd7_Hjdp3k3K_i4/view?usp=drivesdk
