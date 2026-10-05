@@ -2,42 +2,52 @@
 
 Videos, figures, illustrations, animations, and other media from the International Brain Laboratory, with credits and provenance.
 
-The files live in Google Drive. This repository holds their metadata and the tool for uploading them. Members publish directly with one command or from Python.
+The files live in the IBL [Media folder on Google Drive](https://drive.google.com/drive/folders/1aWO70W8pRQDO6Ow-XFXNOSchAIm6ZolL). This repository holds their metadata and the tool for uploading them. Members publish directly with one command or from Python; no form, pull request, or review is required.
 
-> Initial implementation: automated tests use simulated services. Google login against the IBL destination and live uploads remain to be verified. The catalog is currently empty.
+> Pilot status, 5 October 2026: Google login, saved credentials, Drive upload access, public viewing, and GitHub write access have been checked for Cyrille. No media has been uploaded; the first real upload and public download remain to be tested. See [setup](docs/setup.md).
 
-## Install
+## Set up once
 
-Requires Python 3.11+ and [GitHub CLI](https://cli.github.com/). From this checkout:
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and [GitHub CLI](https://cli.github.com/). You need upload access to Media, write access to this repository, and the shared OAuth desktop-client JSON from an IBL maintainer. Contributors do not need their own Google Cloud project.
 
-```bash
-uv sync --group dev
-uv run ibl-media --help
-uv run ibl-media doctor --github-only
-```
-
-Alternatively, install the command with `uv tool install .`, or run `python -m pip install -e .` inside a virtual environment. All `ibl-media` commands below can also be invoked as `uv run ibl-media` from this checkout.
-
-For video dimensions and duration, install `ffprobe` (part of FFmpeg). It is optional; image dimensions, file sizes, and checksums work without it.
-
-## Start with access checks
-
-The first rollout is for one member, Cyrille. No media should be uploaded during the initial authentication setup.
-
-GitHub checks are ready to run now. Google access needs a one-time desktop OAuth client created in Google Cloud; follow [setup](docs/setup.md). Then:
+From a checkout of this repository:
 
 ```bash
-ibl-media login --client-secrets /path/to/client_secret.json
+uv tool install .
+gh auth login                         # skip if already signed in
+ibl-media login --client-secrets /path/to/client_secret.json --account YOUR_IBL_EMAIL
 ibl-media doctor
 ```
 
-Neither command uploads media or writes to GitHub. To inspect metadata for an existing local file without any network requests:
+In the browser, sign in with your IBL Google account and select **Media**. The tool verifies the requested account before saving credentials. The current Google app is Internal to the IBL Workspace organization; using a university or other external Google account needs a maintainer to adjust the app's audience first.
+
+Login uses your GitHub display name as the default credit. Set your preferred attribution once if needed:
+
+```bash
+ibl-media configure --credit 'Your name'
+```
+
+Credentials are stored locally outside the checkout. On later runs, the tool reuses them. These setup commands do not upload media, change Drive sharing, or write to GitHub. See [setup and permissions](docs/setup.md) for details and troubleshooting.
+
+For Python use, install the package into the environment that generates your figures with `python -m pip install -e /path/to/ibl-media`. Alternatively, run commands from this checkout with `uv run ibl-media` and scripts with `uv run python`; a separate tool installation is then unnecessary.
+
+For video dimensions and duration, install `ffprobe` (part of FFmpeg). It is optional; image dimensions, file sizes, and checksums work without it.
+
+## Preview without uploading
+
+To inspect metadata for an existing local file without any network requests or state changes:
 
 ```bash
 ibl-media upload /path/to/figure.png --dry-run
 ```
 
-Actual upload commands below publish files and should be run only when ready to publish media.
+To check saved access without uploading:
+
+```bash
+ibl-media doctor
+```
+
+`doctor` exits with an error if upload access or public viewing is missing. Media currently passes both checks for the pilot account. During the pilot, use these checks and dry runs; the commands below are for when media publication begins.
 
 ## Upload an asset
 
@@ -65,7 +75,7 @@ ibl-media upload illustration.png illustration.psd \
   --title "Brain illustration"
 ```
 
-Uploads go to the public collection. All files supplied to the command, including editable sources, are intended for public sharing. No separate form, pull request, or review is required.
+The tool requires public viewing on the destination before uploading. All files supplied to the command, including editable sources, are intended for public sharing. Files made in Photoshop or another desktop app use the same command; a source script is optional.
 
 ## Upload from Python
 
@@ -106,20 +116,9 @@ A new version receives new Drive files. The metadata retains previous versions, 
 
 Each asset has an ID, title, credit, reuse terms, and a list of versions. Each version records the uploader, upload time, supplied context, and file details: Drive ID and link, filename, format, size, checksum, and dimensions or duration where supported.
 
-Metadata is readable YAML in `assets/`. See [metadata and provenance](docs/metadata.md) for an example and the distinction between automatically recorded facts and contributor-supplied information.
+Metadata is readable YAML in `assets/`, created on the first successful publication. See [metadata and provenance](docs/metadata.md) for an example and the distinction between automatically recorded facts and contributor-supplied information.
 
 The default reuse terms are **Permission required** until IBL chooses a collection-wide policy. Set a local default with `ibl-media configure --reuse 'TERMS'`, or override one upload with `--reuse`. Public access alone does not specify reuse terms. Each version retains its own credit and reuse terms.
-
-## Access and authentication
-
-Sign in once with your own Google account and GitHub account. You need upload access to the configured Drive folder and write access to this repository. The tool reuses GitHub CLI authentication and stores Google credentials locally outside the checkout.
-
-```bash
-gh auth login                         # if not already signed in
-ibl-media login                       # Google sign-in and setup checks
-```
-
-See [setup and permissions](docs/setup.md) for contributor setup and the one-time configuration maintained by IBL.
 
 ## If an upload fails
 
@@ -145,3 +144,9 @@ ibl-media validate assets/ASSET_ID.yaml
 ## Legacy visualizations
 
 [ibl-viz](https://github.com/int-brain-lab/ibl-viz) contains earlier visualizations, notebooks, and media. New catalog entries can link to those original files and source commits. Legacy assets are added as they become useful; unknown credits or source details remain explicitly unknown.
+
+## Documentation
+
+- [Setup and permissions](docs/setup.md): contributor access, maintainer configuration, and troubleshooting.
+- [Metadata and provenance](docs/metadata.md): recorded fields, attribution, and version history.
+- [Development](docs/development.md): tests, implementation, recovery behavior, and live verification.

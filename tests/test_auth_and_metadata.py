@@ -100,6 +100,14 @@ def test_missing_client_has_actionable_message():
         google_auth.credentials()
 
 
+def test_google_login_can_hint_the_required_account():
+    options = google_auth.authorization_options(
+        "folder", "cyrille.rossant@internationalbrainlab.org"
+    )
+    assert options["login_hint"] == "cyrille.rossant@internationalbrainlab.org"
+    assert options["file_ids"] == "folder"
+
+
 @pytest.mark.parametrize("picked", ["wrong-folder", ""])
 def test_login_rejects_invalid_state_and_wrong_selection(tmp_path, monkeypatch, picked):
     configure_client(tmp_path)

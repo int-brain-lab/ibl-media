@@ -36,21 +36,25 @@ A per-receipt lock prevents two local processes from running the same unfinished
 
 Receipts move to the local completed history after publication. They are not automatically deleted on failure, and the tool does not delete orphaned Drive files. Different machines have separate receipt stores; cross-machine recovery is not implemented.
 
-## Remaining live verification
+## Live verification
 
-For the first member, with no media uploads:
+The following checks succeeded on 5 October 2026 for `cyrille.rossant@internationalbrainlab.org` and GitHub account `rossant`, without uploading media:
 
-1. Create/import the Google Desktop app configuration.
-2. Verify browser consent and the configured folder selection.
-3. Run `doctor` to inspect ownership, upload capability, and public viewing.
-4. Restart the command and repeat `doctor` to verify saved credentials.
+1. Create the IBL Google Cloud project, enable Drive and Picker, and import the Desktop app configuration.
+2. Complete browser consent and select the configured Media folder; verify the Google account via the Drive API before saving credentials.
+3. Inspect the folder through the API: Media is in a Shared Drive and the account can add files.
+4. Run `doctor` in a separate process, successfully reusing saved credentials.
+5. Confirm GitHub repository Write access and inspect the `main` branch.
+6. After the maintainer enabled public viewing, repeat `doctor` and confirm both upload access and public viewing.
 
-Only after an explicit request to upload media:
+Media now passes the permission checks with the saved credentials. See [setup](setup.md#enable-public-viewing-on-media) for the sharing configuration. These checks did not upload media or create catalog entries.
+
+When media uploads are authorized, verify the remaining publication path:
 
 1. Upload one small asset and verify its metadata commit.
 2. Check signed-out viewing/downloading of the Drive file.
 3. Upload another version and confirm earlier files remain accessible.
 
-Google's desktop Picker response and inherited permissions on the actual IBL folder remain unverified. Branch write checks currently inspect repository access and report protection; they do not prove an authenticated write will pass every repository rule.
+The actual desktop Picker callback and persisted credentials have been verified. File transfer, metadata commits, and inherited public access on new files remain untested against the live services. Branch write checks inspect repository access and report protection; they do not prove an authenticated write will pass every repository rule. Automated upload tests use simulated services.
 
 A generated gallery, S3 delivery, automated backups, legacy import, and cross-machine recovery are outside this initial implementation.

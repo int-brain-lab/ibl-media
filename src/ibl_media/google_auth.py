@@ -13,6 +13,7 @@ from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 from keyring.errors import KeyringError
 
 from .config import client_path, config_dir, write_private
@@ -74,8 +75,8 @@ def credentials():
         raise MediaError("Google authorization is invalid. Run ibl-media login again.") from exc
 
 
-def authorization_options(folder):
-    return {
+def authorization_options(folder, account=None):
+    options = {
         "access_type": "offline",
         "prompt": "consent select_account",
         "include_granted_scopes": "false",
@@ -85,9 +86,12 @@ def authorization_options(folder):
         "mimetypes": "application/vnd.google-apps.folder",
         "file_ids": folder,
     }
+    if account:
+        options["login_hint"] = account
+    return options
 
 
-def login(folder, timeout=180):
+def login(folder, timeout=180, account=None):
     flow = InstalledAppFlow.from_client_secrets_file(
         str(client_path()), scopes=[SCOPE], autogenerate_code_verifier=True
     )
@@ -121,7 +125,7 @@ def login(folder, timeout=180):
     with HTTPServer(("127.0.0.1", 0), Handler) as server:
         server.timeout = 0.5
         flow.redirect_uri = f"http://127.0.0.1:{server.server_port}/"
-        url, expected_state = flow.authorization_url(**authorization_options(folder))
+        url, expected_state = flow.authorization_url(**authorization_options(folder, account))
         if not webbrowser.open(url):
             raise MediaError("Could not open a browser. Run login on a machine with a browser.")
         deadline = time.monotonic() + timeout
@@ -145,5 +149,10 @@ def login(folder, timeout=180):
             "Google could not exchange the authorization code. Check the desktop-client "
             "configuration and run login again."
         ) from exc
+    if account:
+        service = build("drive", "v3", credentials=flow.credentials, cache_discovery=False)
+        actual = service.about().get(fields="user(emailAddress)").execute()["user"]["emailAddress"]
+        if actual.casefold() != account.casefold():
+            raise MediaError(f"Google authorized {actual}; expected {account}. Run login again.")
     TokenStore().save(flow.credentials)
     return flow.credentials

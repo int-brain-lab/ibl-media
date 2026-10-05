@@ -27,6 +27,7 @@ def parser():
     auth = commands.add_parser("login", help="Authorize Google folder access; upload nothing.")
     auth.add_argument("--client-secrets")
     auth.add_argument("--credit")
+    auth.add_argument("--account", help="Require this Google account before saving credentials.")
     commands.add_parser("logout", help="Remove saved Google tokens locally.")
     doctor = commands.add_parser(
         "doctor", help="Check access without uploading or writing to GitHub."
@@ -71,7 +72,7 @@ def run(args):
             settings.credit = args.credit
         elif not settings.credit:
             settings.credit = user["name"]
-        login(settings.folder)
+        login(settings.folder, account=args.account)
         settings.save()
         info = Drive().folder_info(settings.folder)
         if not info["can_upload"]:
