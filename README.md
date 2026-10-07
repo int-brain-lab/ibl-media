@@ -112,6 +112,14 @@ ibl-media upload coverage.png --asset ASSET_ID
 
 A new version receives new Drive files. The metadata retains previous versions, their links, and their checksums. A filename alone does not identify an existing asset.
 
+New uploads keep their original filenames inside `Media/<asset ID>/v<version>/`,
+for example `Media/22f5f7a71844403aaa379e555b3a0f02/v2/ibl_bwm.png`.
+Files uploaded together share one version folder. During an incomplete upload,
+the folder is named `pending-<upload ID>`; publication renames it to the final
+catalog version, including after concurrent updates. `resume` reuses the saved
+folder and file IDs. Existing flat uploads keep their locations and links;
+their next versions use the new structure.
+
 ## What gets recorded
 
 Each asset has an ID, title, credit, reuse terms, and a list of versions. Each version records the uploader, upload time, supplied context, and file details: Drive ID and link, filename, format, size, checksum, and dimensions or duration where supported.

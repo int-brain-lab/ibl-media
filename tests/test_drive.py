@@ -63,3 +63,56 @@ def test_folder_permissions_are_paginated():
         {"permissions": [{"type": "anyone", "role": "reader"}]},
     ]
     assert Drive(service).check("folder")["public"] is True
+
+
+def test_folder_creation_recovers_a_lost_response():
+    service = MagicMock()
+    service.files().get().execute.side_effect = [
+        HttpError(httplib2.Response({"status": "404"}), b'{"error": "not found"}'),
+        {
+            "id": "reserved-folder",
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": ["collection"],
+        },
+    ]
+    service.files().create().execute.side_effect = OSError("Response lost")
+    service.files().create.reset_mock()
+    drive = Drive(service)
+    with pytest.raises(OSError):
+        drive.ensure_folder("collection", "asset", "reserved-folder")
+    assert drive.ensure_folder("collection", "asset", "reserved-folder") == "reserved-folder"
+    assert service.files().create.call_count == 1
+    created = service.files().create.call_args.kwargs
+    assert created["body"] == {
+        "id": "reserved-folder",
+        "name": "asset",
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": ["collection"],
+    }
+    assert created["supportsAllDrives"] is True
+
+
+def test_folder_search_includes_shared_drives_and_all_pages():
+    service = MagicMock()
+    service.files().list().execute.side_effect = [
+        {"files": [], "nextPageToken": "next"},
+        {"files": [{"id": "asset-folder"}]},
+    ]
+    assert Drive(service).find_folder("collection", "asset") == "asset-folder"
+    options = service.files().list.call_args.kwargs
+    assert options["pageToken"] == "next"
+    assert options["supportsAllDrives"] and options["includeItemsFromAllDrives"]
+    assert "'collection' in parents" in options["q"]
+    assert "trashed = false" in options["q"]
+
+
+def test_resume_rejects_a_moved_or_deleted_upload_folder():
+    service = MagicMock()
+    service.files().get().execute.return_value = {
+        "id": "folder",
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": ["elsewhere"],
+    }
+    with pytest.raises(MediaError, match="expected parent"):
+        Drive(service).ensure_folder("collection", "asset", "folder")
+    assert not service.files().create.called

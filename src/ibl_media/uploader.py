@@ -100,12 +100,28 @@ def _finish(receipt, receipt_path, settings, github, drive):
             path = Path(item["path"])
             if not path.is_file() or checksum(path) != item["facts"]["sha256"]:
                 raise MediaError(f"Original upload file is missing or changed: {path.name}")
+    folder = settings.folder
+    # Receipts created before structured storage keep their original flat destination.
+    if "drive_layout" in receipt:
+        layout = receipt["drive_layout"]
+        if not layout.get("asset_folder"):
+            layout["asset_folder"] = (
+                drive.find_folder(settings.folder, receipt["asset_id"]) or drive.reserve_id()
+            )
+            write_private(receipt_path, receipt)
+        drive.ensure_folder(settings.folder, receipt["asset_id"], layout["asset_folder"])
+        if not layout.get("version_folder"):
+            layout["version_folder"] = drive.reserve_id()
+            write_private(receipt_path, receipt)
+        folder = drive.ensure_folder(
+            layout["asset_folder"], f"pending-{receipt['upload_id']}", layout["version_folder"]
+        )
     for item in receipt["files"]:
         if item.get("storage"):
             remote = drive.get_file(item["file_id"])
             if not remote:
                 raise MediaError("A completed Drive file has disappeared; publication stopped.")
-            drive.verify(remote, item["facts"], settings.folder)
+            drive.verify(remote, item["facts"], folder)
             continue
         if not item.get("file_id"):
             item["file_id"] = drive.reserve_id()
@@ -113,11 +129,13 @@ def _finish(receipt, receipt_path, settings, github, drive):
         item["storage"] = drive.upload_file(
             Path(item["path"]),
             item["facts"],
-            settings.folder,
+            folder,
             item["file_id"],
         )
         write_private(receipt_path, receipt)
     version = _publish(github, receipt)
+    if "drive_layout" in receipt:
+        drive.rename_folder(folder, f"v{version['version']}")
     result = UploadResult(
         id=receipt["asset_id"],
         version=version["version"],
@@ -242,6 +260,7 @@ def upload(
                     "header": header,
                     "overrides": {"title": title, "credit": credit, "reuse": reuse},
                     "context": context,
+                    "drive_layout": {},
                     "files": [{"path": str(path), "facts": facts} for path, facts in prepared],
                 }
                 write_private(receipt_path, receipt)

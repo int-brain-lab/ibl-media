@@ -46,6 +46,7 @@ class FakeDrive:
 
     def __init__(self):
         self.files = {}
+        self.folders = {}
         self.reserved = 0
         self.transfers = 0
         self.fail_after_complete = False
@@ -60,6 +61,23 @@ class FakeDrive:
 
     def get_file(self, file_id):
         return self.files.get(file_id)
+
+    def find_folder(self, parent, name):
+        return next(
+            (
+                key
+                for key, value in self.folders.items()
+                if value == {"parent": parent, "name": name}
+            ),
+            None,
+        )
+
+    def ensure_folder(self, parent, name, folder_id):
+        self.folders.setdefault(folder_id, {"parent": parent, "name": name})
+        return folder_id
+
+    def rename_folder(self, folder_id, name):
+        self.folders[folder_id]["name"] = name
 
     def upload_file(self, path, facts, folder, file_id):
         if file_id in self.files:
@@ -145,10 +163,10 @@ def test_lost_drive_response_reuses_reserved_id(image, services):
     with pytest.raises(MediaError):
         upload(image)
     receipt = uploader.pending()[0]
-    assert receipt["files"][0]["file_id"] == "drive-1"
+    assert receipt["files"][0]["file_id"] == "drive-3"
     assert "storage" not in receipt["files"][0]
     uploader.resume(receipt["upload_id"])
-    assert drive.transfers == drive.reserved == 1
+    assert drive.transfers == 1 and drive.reserved == 3
 
 
 def test_partial_group_resumes_only_incomplete_files(image, tmp_path, services):
@@ -163,7 +181,7 @@ def test_partial_group_resumes_only_incomplete_files(image, tmp_path, services):
     assert "storage" not in receipt["files"][1]
     drive.fail_on_transfer = None
     uploader.resume(receipt["upload_id"])
-    assert drive.transfers == 3 and len(drive.files) == 2 and drive.reserved == 2
+    assert drive.transfers == 3 and len(drive.files) == 2 and drive.reserved == 4
 
 
 def test_repeated_command_resumes_matching_pending_job(image, services):
@@ -193,7 +211,7 @@ def test_versions_preserve_prior_credits_and_reuse(image, services):
 
 
 def test_concurrent_catalog_update_preserves_other_version(image, services):
-    github, _ = services
+    github, drive = services
     original = upload(image)
     github.conflict = True
     result = upload(image, asset=original.id)
@@ -201,6 +219,55 @@ def test_concurrent_catalog_update_preserves_other_version(image, services):
     assert result.version == 3
     assert entry["versions"][1]["upload_id"] == "another-contributor"
     assert len(entry["versions"]) == 3
+    assert sorted(item["name"] for item in drive.folders.values()) == [original.id, "v1", "v3"]
+
+
+def test_drive_folders_group_files_and_separate_versions(image, tmp_path, services):
+    _, drive = services
+    other = tmp_path / "source.psd"
+    other.write_bytes(b"mock source")
+    first = upload(image, other)
+    second = upload(image, asset=first.id)
+    asset_folder = drive.find_folder(uploader.Settings.load().folder, first.id)
+    v1 = drive.find_folder(asset_folder, "v1")
+    v2 = drive.find_folder(asset_folder, "v2")
+    assert v1 and v2 and v1 != v2
+    assert [item["parents"] for item in drive.files.values()] == [[v1], [v1], [v2]]
+    assert second.version == 2 and len(drive.folders) == 3
+
+
+def test_folder_rename_failure_resumes_without_duplicate_publication(image, services, monkeypatch):
+    github, drive = services
+    rename = drive.rename_folder
+
+    def fail(*args):
+        raise OSError("Rename response lost")
+
+    monkeypatch.setattr(drive, "rename_folder", fail)
+    with pytest.raises(MediaError):
+        upload(image)
+    receipt = uploader.pending()[0]
+    monkeypatch.setattr(drive, "rename_folder", rename)
+    uploader.resume(receipt["upload_id"])
+    assert github.writes == drive.transfers == 1
+    assert len(drive.folders) == 2
+    assert drive.folders[receipt["drive_layout"]["version_folder"]]["name"] == "v1"
+
+
+def test_legacy_flat_receipt_resumes(image, services):
+    github, drive = services
+    github.fail = True
+    with pytest.raises(MediaError):
+        upload(image)
+    path = next(uploader.pending_dir().glob("*.json"))
+    receipt = json.loads(path.read_text())
+    del receipt["drive_layout"]
+    folder = uploader.Settings.load().folder
+    drive.files[receipt["files"][0]["file_id"]]["parents"] = [folder]
+    uploader.write_private(path, receipt)
+    github.fail = False
+    uploader.resume(receipt["upload_id"])
+    assert github.writes == drive.transfers == 1
 
 
 def test_unknown_asset_fails_before_media_transfer(image, services):

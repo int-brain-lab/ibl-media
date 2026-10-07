@@ -8,7 +8,8 @@ from .errors import MediaError
 from .google_auth import credentials
 from .metadata import checksum
 
-FIELDS = "id,name,parents,size,sha256Checksum,webViewLink"
+FIELDS = "id,name,mimeType,trashed,parents,size,sha256Checksum,webViewLink"
+FOLDER_MIME = "application/vnd.google-apps.folder"
 
 
 class Drive:
@@ -95,6 +96,61 @@ class Drive:
             if exc.resp.status == 404:
                 return None
             raise
+
+    def find_folder(self, parent, name):
+        """Find a named child, including folders in Shared Drives."""
+
+        def escape(value):
+            return value.replace("\\", "\\\\").replace("'", "\\'")
+
+        folders = []
+        token = None
+        while True:
+            page = (
+                self.service.files()
+                .list(
+                    q=(
+                        f"'{escape(parent)}' in parents and name = '{escape(name)}' "
+                        f"and mimeType = '{FOLDER_MIME}' and trashed = false"
+                    ),
+                    spaces="drive",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    pageToken=token,
+                    fields="nextPageToken,files(id)",
+                )
+                .execute()
+            )
+            folders.extend(item["id"] for item in page.get("files", []))
+            token = page.get("nextPageToken")
+            if not token:
+                return min(folders) if folders else None
+
+    def ensure_folder(self, parent, name, folder_id):
+        """Use a persisted ID so retrying an ambiguous create cannot duplicate a folder."""
+        existing = self.get_file(folder_id)
+        if existing:
+            if (
+                existing.get("mimeType") != FOLDER_MIME
+                or existing.get("trashed")
+                or parent not in existing.get("parents", [])
+            ):
+                raise MediaError("The upload folder is missing or outside its expected parent.")
+            return folder_id
+        self.service.files().create(
+            body={"id": folder_id, "name": name, "mimeType": FOLDER_MIME, "parents": [parent]},
+            supportsAllDrives=True,
+            fields="id",
+        ).execute()
+        return folder_id
+
+    def rename_folder(self, folder_id, name):
+        self.service.files().update(
+            fileId=folder_id,
+            body={"name": name},
+            supportsAllDrives=True,
+            fields="id",
+        ).execute()
 
     @staticmethod
     def verify(item, facts, folder):
