@@ -21,6 +21,8 @@ jobs:
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
       - run: uv run --locked pytest -q
+      - name: Check fresh installation and private configuration retrieval
+        run: uv run --locked python scripts/check_installed_setup.py --wheel
       - name: Validate catalog and keep repository small
         run: |
           uv run --locked python - <<'PY'

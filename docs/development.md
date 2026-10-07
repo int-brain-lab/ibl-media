@@ -12,6 +12,22 @@ uv build
 
 Tests isolate configuration in temporary directories and deny external network connections. Upload tests use simulated Drive and GitHub services; generated test images stay local. The OAuth callback test uses a loopback HTTP server and a simulated token exchange.
 
+## Check an installed package
+
+CI runs `uv run python scripts/check_installed_setup.py --wheel`. It builds the production package in a temporary directory, asserts that the wheel includes the public configuration manifest and excludes the desktop-client JSON, and installs it in a separate virtual environment. Dependency installation can access the package registry; authentication checks allow only loopback connections.
+
+Run it locally with:
+
+```bash
+uv run python scripts/check_installed_setup.py --wheel
+```
+
+The check imports the installed wheel rather than the checkout. It starts with a temporary home and empty `IBL_MEDIA_HOME`, removes inherited GitHub credentials from child environments, and forbids OS keyring access and external connections. Private-release responses and the downloaded JSON are simulated, using synthetic credentials and a matching test checksum injected only into the test process. No real credentials are embedded in the source or wheel.
+
+The installed CLI first rejects missing configuration access before opening a browser. It then automatically retrieves and validates test configuration, constructs a real OAuth authorization URL, checks scope, account selection, folder selection, and PKCE, and simulates the callback and token exchange. A wrong account is rejected without saving tokens; a valid login saves tokens for a separate `doctor` process. Logout removes them. Unit tests also cover public-source rejection, corrupt downloads, unexpected endpoints/client identities, and cached configuration.
+
+These service responses are simulated; they do not establish that a particular colleague can authorize the Google app or upload to Media. Live authenticated retrieval from the private release has been checked in an empty temporary profile, without reusing Google tokens. A real browser login and `doctor` on the contributor's computer remain the check of that contributor's Google account and permissions.
+
 GitHub Actions runs linting, tests, and catalog validation on Python 3.11 and 3.13. It also checks for binary files and tracked files over 2 MB. Media belongs in Drive; `.gitignore` excludes common media formats.
 
 ## Code layout
@@ -21,6 +37,7 @@ GitHub Actions runs linting, tests, and catalog validation on Python 3.11 and 3.
 | `cli.py` | Commands, diagnostics, and actionable terminal errors. |
 | `config.py` | Defaults, local settings, and private atomic JSON writes. |
 | `google_auth.py` | Desktop OAuth with folder selection, refresh, and token storage. |
+| `oauth_client.py` | Authenticated private configuration retrieval and integrity checks. |
 | `drive.py` | Destination checks, reserved file IDs, chunked transfers, and checksum verification. |
 | `github.py` | Read/write catalog entries through `gh api`. |
 | `metadata.py` | File facts, supplied source context, and schema validation. |

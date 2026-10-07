@@ -26,13 +26,13 @@ Media was created for this collection and is the intended publication folder. No
 
 ## Contributor setup
 
-Ask an IBL maintainer for upload access to **Media**, **Write** access to this repository, and the existing OAuth desktop-client JSON. Use your own accounts; do not copy another contributor's tokens.
+Ask an IBL maintainer for upload access to **Media** and **Write** access to this repository. Also ask for **Read** access to the private [`ibl-media-config`](https://github.com/int-brain-lab/ibl-media-config) repository. Accept any pending GitHub invitations before login; organization SSO authorization may also be needed. Use your own accounts; do not copy another contributor's tokens.
 
 After [installing the tool](../README.md#set-up-once):
 
 ```bash
-gh auth login                         # skip if already signed in
-ibl-media login --client-secrets /path/to/client_secret.json --account YOUR_IBL_EMAIL
+gh auth login --hostname github.com   # skip if already signed in on github.com
+ibl-media login --account YOUR_IBL_EMAIL
 ibl-media doctor
 ```
 
@@ -40,13 +40,13 @@ The browser asks you to authorize the application and select **Media**. `--accou
 
 The current app accepts accounts in the IBL Workspace organization. An external university or personal Google account needs a maintainer to change the audience as described below, even if that account already has access to the folder.
 
-Login imports the client JSON locally and uses your GitHub display name as the default credit. To choose an attribution line:
+On a fresh profile, login uses your GitHub authentication to download the shared desktop client from the private configuration release. It verifies that the repository is private, checks the download against the package's pinned SHA-256 checksum, and checks the expected client ID, project, and Google endpoints before saving it locally. The public package contains only the release location, client ID, and checksum. Login uses your GitHub display name as the default credit. To choose an attribution line:
 
 ```bash
 ibl-media configure --credit 'Your name'
 ```
 
-For Cyrille's existing setup, the client is already imported and login has succeeded. `ibl-media doctor` passes with the saved credentials; login only needs repeating if authorization becomes invalid or the account or destination changes.
+On later runs, saved credentials are reused; login only needs repeating if authorization becomes invalid or the account or destination changes.
 
 These commands do not upload files, change sharing, or write to GitHub. `doctor` returns a nonzero exit status if either upload access or public viewing is missing.
 
@@ -72,7 +72,26 @@ The IBL application is already configured. For a replacement project or client:
 4. Under **Data Access**, add only `https://www.googleapis.com/auth/drive.file`.
 5. Under **Clients**, create an OAuth client of type **Desktop app**, then download its JSON.
 
-Provide that desktop-client configuration to authorized contributors. Keep downloaded client JSON and user tokens out of this repository. Contributors import it using `login --client-secrets`; only maintainers need access to the Cloud project.
+Distribute the IBL desktop-client configuration privately as described below. A custom deployment can instead import its own client using `login --client-secrets`; only maintainers need access to the Cloud project. Personal access tokens, refresh tokens, and service-account keys must stay out of the repository.
+
+### Private desktop-client distribution
+
+The [`ibl-media-config`](https://github.com/int-brain-lab/ibl-media-config) repository is private. Release `oauth-client-v1` carries the desktop-client JSON as the `desktop-client.json` attachment; credentials are never committed to its Git history. The public package's `oauth_client_manifest.json` identifies the exact release, asset, client ID, project, and SHA-256 checksum. Only maintainers should have permission to change releases; contributors need Read access. Organization owners retain their inherited administrative access.
+
+To replace the configuration, download the **ibl-media CLI** Desktop app JSON from the existing [`ibl-media` Google Cloud project](https://console.cloud.google.com/auth/clients?project=ibl-media). Check its project and desktop-client type, upload it as an attachment to a new versioned release in the private repository, and update the public manifest's tag and checksum. Verify authenticated retrieval in an empty profile before distributing the updated package. Do not upload credentials to this public repository or to a public release. Google's [OAuth policy](https://developers.google.com/identity/protocols/oauth2/policies) prohibits committing client credentials to public code repositories.
+
+Authorized contributors can extract the configuration from their local installations. This is a property of [desktop OAuth clients](https://developers.google.com/identity/protocols/oauth2/native-app): private distribution controls who can download it, but does not prove that a program using the client ID is the genuine IBL tool. Keep the app Internal to IBL and ask a Workspace administrator to enforce the required `drive.file` access rather than relying on the Python scope constant as an allowlist. Personal Google tokens remain private to each contributor.
+
+Onboarding requires upload access to Media, Write access to this catalog, and Read access to the private configuration repository. Then contributors use:
+
+```bash
+uv tool install --force .
+gh auth login --hostname github.com
+ibl-media login --account YOUR_IBL_EMAIL
+ibl-media doctor
+```
+
+An explicitly imported local client is reused, so existing installations and custom deployments retain their selected application. Changing the release does not overwrite an existing custom import; reimport a replacement explicitly when needed. Downloading configuration and running login never uploads media, changes Drive sharing, or writes to GitHub.
 
 The implementation uses Google's [desktop Picker OAuth flow](https://developers.google.com/workspace/drive/picker/guides/desktop-mobile-picker). Folder selection is part of browser authorization; a separate Picker API key or web app is unnecessary. Login checks that the returned folder ID matches the configured destination. The limited [`drive.file` scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) covers app-created files and items explicitly selected for the app. Knowing a folder ID alone does not authorize access.
 
@@ -111,9 +130,9 @@ ibl-media configure                   # show defaults and configuration location
 ibl-media configure --reuse 'Permission required'
 ```
 
-Configuration uses the standard OS user configuration directory. Tokens use the OS keyring where available; otherwise they are stored in owner-only files. The imported desktop-client JSON is copied to the configuration directory with owner-only permissions. Receipts use the OS user state directory and owner-only files. None of these files belong in Git.
+Configuration uses the standard OS user configuration directory. Tokens use the OS keyring where available; otherwise they are stored in owner-only files. The downloaded or explicitly imported desktop-client JSON is saved in the configuration directory with owner-only permissions. Receipts use the OS user state directory and owner-only files. None of these files belong in Git.
 
-For isolated testing or a separate profile, set `IBL_MEDIA_HOME` to a directory of your choice. The tool places configuration and a `state/` subdirectory there. That directory can contain credentials and should remain private.
+For isolated testing or a separate profile, set `IBL_MEDIA_HOME` to a directory of your choice. The tool places configuration, owner-only token files, and a `state/` subdirectory there; it never reads or writes the default OS keyring in this mode. That directory can contain credentials and should remain private.
 
 `ibl-media logout` removes locally saved Google tokens. It does not revoke the application grant in your Google account. GitHub credentials stay managed by `gh`.
 
@@ -121,7 +140,9 @@ For isolated testing or a separate profile, set `IBL_MEDIA_HOME` to a directory 
 
 | Problem | Action |
 | --- | --- |
-| Google client missing | Obtain the existing Desktop app JSON from an IBL maintainer and import it with `login --client-secrets`. |
+| Private configuration inaccessible | Sign in to GitHub, accept the configuration repository invitation, and check SSO authorization. Ask a maintainer for Read access to `ibl-media-config`. |
+| Configuration checksum fails | Nothing is saved. Ask a maintainer to check the release and manifest; do not bypass verification. |
+| Google application configuration missing | Run `ibl-media login` to retrieve it automatically. A custom deployment can import its own client with `login --client-secrets`. |
 | Wrong Google account | Run `login --account YOUR_IBL_EMAIL` again. |
 | `org_internal` authorization error | Use an IBL Workspace account, or ask a maintainer to configure external contributors. |
 | Folder inaccessible | Check upload access and select the configured Media folder during login. |

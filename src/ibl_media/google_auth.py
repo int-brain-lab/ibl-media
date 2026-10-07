@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import secrets
 import time
 import webbrowser
@@ -28,11 +29,15 @@ class TokenStore:
         client = json.loads(client_path().read_text())["installed"]["client_id"]
         self.account = hashlib.sha256(client.encode()).hexdigest()
         self.path = config_dir() / f"token-{self.account[:16]}.json"
+        # A separate profile must never reuse tokens from the default OS keyring.
+        self.use_keyring = not os.environ.get("IBL_MEDIA_HOME")
 
     def load(self):
         # A fallback file is newer than any keyring value left after a failed keyring write.
         if self.path.exists():
             return json.loads(self.path.read_text())
+        if not self.use_keyring:
+            return None
         try:
             value = keyring.get_password(SERVICE, self.account)
             if value:
@@ -43,6 +48,9 @@ class TokenStore:
 
     def save(self, credentials):
         value = credentials.to_json()
+        if not self.use_keyring:
+            write_private(self.path, json.loads(value))
+            return
         try:
             keyring.set_password(SERVICE, self.account, value)
         except (KeyringError, RuntimeError):
@@ -51,6 +59,9 @@ class TokenStore:
             self.path.unlink(missing_ok=True)
 
     def clear(self):
+        if not self.use_keyring:
+            self.path.unlink(missing_ok=True)
+            return
         try:
             keyring.delete_password(SERVICE, self.account)
         except (KeyringError, RuntimeError):

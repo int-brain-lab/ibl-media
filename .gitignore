@@ -12,6 +12,7 @@ token.json
 tokens.json
 token-*.json
 client.json
+src/ibl_media/oauth_client.json
 .env
 .env.*
 # Media belongs in Drive, not in this repository.

@@ -8,14 +8,14 @@ The files live in the IBL [Media folder on Google Drive](https://drive.google.co
 
 ## Set up once
 
-Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and [GitHub CLI](https://cli.github.com/). You need upload access to Media, write access to this repository, and the shared OAuth desktop-client JSON from an IBL maintainer. Contributors do not need their own Google Cloud project.
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and [GitHub CLI](https://cli.github.com/). You need upload access to Media and write access to this repository. Google application configuration is retrieved automatically through your GitHub account; contributors do not need a JSON file, API key, or Google Cloud project. A maintainer must grant Read access to the private configuration repository as well as Write access to this catalog.
 
 From a checkout of this repository:
 
 ```bash
-uv tool install .
-gh auth login                         # skip if already signed in
-ibl-media login --client-secrets /path/to/client_secret.json --account YOUR_IBL_EMAIL
+uv tool install --force .
+gh auth login --hostname github.com   # skip if already signed in on github.com
+ibl-media login --account YOUR_IBL_EMAIL
 ibl-media doctor
 ```
 

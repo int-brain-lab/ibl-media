@@ -1,4 +1,4 @@
-"""Small, per-user configuration; secrets and receipts never enter the catalog."""
+"""Application defaults and per-user configuration; personal tokens stay local."""
 
 import json
 import os
@@ -74,21 +74,29 @@ class Settings:
 
 
 def import_client(path):
+    value = read_client(path)
+    write_private(config_dir() / "client.json", value)
+
+
+def read_client(path):
     try:
         value = json.loads(Path(path).expanduser().read_text())
         client = value["installed"]
         if not client.get("client_id") or not client.get("client_secret"):
             raise ValueError("missing desktop client ID or client secret")
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
         raise MediaError(f"Expected a Google OAuth desktop-client JSON: {exc}") from exc
-    write_private(config_dir() / "client.json", value)
+    return value
 
 
 def client_path():
+    """Only local configuration is used; login provisions it through authenticated download."""
     path = config_dir() / "client.json"
-    if not path.exists():
+    if not path.is_file():
         raise MediaError(
-            "Google OAuth client is not configured. Follow docs/setup.md, then run "
+            "Google application configuration is missing. Run ibl-media login to retrieve "
+            "it using your GitHub account, or import a custom desktop client with "
             "ibl-media login --client-secrets /path/to/client_secret.json."
         )
+    read_client(path)
     return path

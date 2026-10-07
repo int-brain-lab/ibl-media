@@ -10,9 +10,9 @@ from urllib.request import urlopen
 import pytest
 from keyring.errors import NoKeyringError
 
-from ibl_media import MediaError, google_auth
+from ibl_media import MediaError, config, google_auth
 from ibl_media.cli import main
-from ibl_media.config import Settings, config_dir, import_client
+from ibl_media.config import Settings, client_path, config_dir, import_client
 from ibl_media.drive import Drive
 from ibl_media.metadata import clean_remote, file_metadata, source_metadata, validate_asset_id
 
@@ -80,6 +80,10 @@ def test_google_callback_validates_state_and_selected_folder(tmp_path, monkeypat
 
 def test_token_storage_falls_back_to_private_file(tmp_path, monkeypatch):
     configure_client(tmp_path)
+    # Exercise the default profile's keyring fallback while keeping files isolated.
+    monkeypatch.delenv("IBL_MEDIA_HOME")
+    monkeypatch.setattr(google_auth, "config_dir", lambda: tmp_path / "home")
+    monkeypatch.setattr(config, "config_dir", lambda: tmp_path / "home")
 
     def unavailable(*args):
         raise NoKeyringError("No backend")
@@ -98,6 +102,39 @@ def test_token_storage_falls_back_to_private_file(tmp_path, monkeypatch):
 def test_missing_client_has_actionable_message():
     with pytest.raises(MediaError, match="login --client-secrets"):
         google_auth.credentials()
+
+
+def test_explicit_client_is_used_locally(tmp_path):
+    configure_client(tmp_path)
+    assert client_path() == config_dir() / "client.json"
+
+
+def test_isolated_profiles_never_access_keyring(tmp_path, monkeypatch):
+    configure_client(tmp_path)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Isolated profiles must not access the OS keyring")
+
+    for method in ("get_password", "set_password", "delete_password"):
+        monkeypatch.setattr(google_auth.keyring, method, forbidden)
+    store = google_auth.TokenStore()
+    assert store.load() is None
+    store.save(SimpleNamespace(to_json=lambda: '{"token": "isolated-example"}'))
+    assert store.load() == {"token": "isolated-example"}
+    assert store.path.stat().st_mode & 0o777 == 0o600
+    monkeypatch.setenv("IBL_MEDIA_HOME", str(tmp_path / "second-profile"))
+    import_client(tmp_path / "desktop.json")
+    assert google_auth.TokenStore().load() is None
+    store.clear()
+    assert store.load() is None
+
+
+@pytest.mark.parametrize("value", ["[]", '{"installed": []}', '{"installed": null}'])
+def test_malformed_client_has_actionable_message(tmp_path, value):
+    path = tmp_path / "invalid.json"
+    path.write_text(value)
+    with pytest.raises(MediaError, match="desktop-client"):
+        import_client(path)
 
 
 def test_google_login_can_hint_the_required_account():

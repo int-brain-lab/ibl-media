@@ -22,7 +22,7 @@ class GitHub:
         self.settings = settings
 
     def api(self, endpoint, method="GET", payload=None):
-        command = ["gh", "api", "--method", method, endpoint]
+        command = ["gh", "api", "--hostname", "github.com", "--method", method, endpoint]
         if payload is not None:
             command.extend(["--input", "-"])
         try:

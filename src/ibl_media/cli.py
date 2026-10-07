@@ -13,6 +13,7 @@ from .drive import Drive
 from .github import GitHub
 from .google_auth import TokenStore, login
 from .metadata import validate_asset
+from .oauth_client import ensure_client
 from .uploader import pending, resume
 
 
@@ -68,6 +69,7 @@ def run(args):
         if args.client_secrets:
             import_client(args.client_secrets)
         user = GitHub(settings).check()
+        ensure_client()
         if args.credit is not None:
             settings.credit = args.credit
         elif not settings.credit:
